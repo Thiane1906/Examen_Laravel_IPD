@@ -30,5 +30,10 @@ class ProjectController extends Controller
 
         return response()->json($project, 201);
     }
+    public function show($id)
+    {
+        $project = Project::with('tasks')->findOrFail($id);
+        return response()->json($project);
+    }
 
 }

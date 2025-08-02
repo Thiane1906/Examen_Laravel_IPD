@@ -28,6 +28,7 @@ public function store(Request $request)
         'project_id'  => $request->project_id,
         'assigned_to' => $request->assigned_to,
         'deadline'    => $request->deadline,
+        'etat' => $request->etat ?? 'En attente',
     ]);
     if ($task) {
         # code...

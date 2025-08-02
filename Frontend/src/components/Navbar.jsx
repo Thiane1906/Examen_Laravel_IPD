@@ -1,12 +1,12 @@
 import { Link } from 'react-router-dom'
-import { useAuth } from '../context/AuthContext'
+import { AuthContext } from '../context/AuthContext';
 
 export default function Navbar() {
-  const { user, logout } = useAuth()
+  const { user, logout } = AuthContext
 
   return (
     <nav className="p-4 bg-gray-800 text-white flex justify-between">
-      <div className="font-bold text-xl">Task Manager</div>
+      <div className="font-bold text-xl"><a href='/dashboard'>Task Manager</a></div>
       <div className="space-x-4">
         {user ? (
           <>

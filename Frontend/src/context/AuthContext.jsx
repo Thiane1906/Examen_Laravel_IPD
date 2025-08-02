@@ -1,75 +1,33 @@
-// import { createContext, useContext, useState } from 'react'
+import { createContext, useState, useEffect } from 'react';
 
-// const AuthContext = createContext()
+export const AuthContext = createContext();
 
-// export function AuthProvider({ children }) {
-//   const [user, setUser] = useState(null)
-
-//   const login = (userData) => setUser(userData)
-//   const logout = () => setUser(null)
-
-//   return (
-//     <AuthContext.Provider value={{ user, login, logout }}>
-//       {children}
-//     </AuthContext.Provider>
-//   )
-// }
-
-// export function useAuth() {
-//   return useContext(AuthContext)
-// }
-
-import { createContext, useContext, useEffect, useState } from 'react'
-import axios from '../api/axios'
-import { useNavigate } from 'react-router-dom'
-
-const AuthContext = createContext()
-
-export function AuthProvider({ children }) {
-  const [user, setUser] = useState(null)
-  const navigate = useNavigate()
-
-  const fetchUser = async () => {
-    try {
-      const { data } = await axios.get('/api/user')
-      setUser(data)
-    } catch {
-      setUser(null)
-    }
-  }
-
-  const login = async (credentials) => {
-    await axios.get('/sanctum/csrf-cookie') // Important avant le login
-    await axios.post('/api/login', credentials)
-    await fetchUser()
-    navigate('/')
-  }
-
-  const register = async (userData) => {
-    await axios.get('/sanctum/csrf-cookie')
-    await axios.post('/api/register', userData)
-    await fetchUser()
-    navigate('/')
-  }
-
-  const logout = async () => {
-    await axios.post('/api/logout')
-    setUser(null)
-    navigate('/login')
-  }
+export const AuthProvider = ({ children }) => {
+  const [token, setToken] = useState(localStorage.getItem('token') || '');
+  const [user, setUser] = useState(null);
 
   useEffect(() => {
-    fetchUser()
-  }, [])
+    if (token) {
+      // tu pourras appeler ici l’API /user si tu veux charger le profil
+      setUser({}); // pour l’instant on simule
+    }
+  }, [token]);
+
+  const login = (token, userData = {}) => {
+    setToken(token);
+    setUser(userData);
+    localStorage.setItem('token', token);
+  };
+
+  const logout = () => {
+    setToken('');
+    setUser(null);
+    localStorage.removeItem('token');
+  };
 
   return (
-    <AuthContext.Provider value={{ user, login, register, logout }}>
+    <AuthContext.Provider value={{ token, user, login, logout }}>
       {children}
     </AuthContext.Provider>
-  )
-}
-
-export function useAuth() {
-  return useContext(AuthContext)
-}
-
+  );
+};
