@@ -42,5 +42,23 @@ public function store(Request $request)
 
 
 }
+public function update(Request $request, $id)
+{
+    $task = \App\Models\Task::findOrFail($id);
+
+    $task->update([
+        'titre' => $request->titre ?? $task->titre,
+        'description' => $request->description ?? $task->description,
+        'etat' => $request->etat ?? $task->etat,
+        'assigned_to' => $request->assigned_to ?? $task->assigned_to,
+        'deadline' => $request->deadline ?? $task->deadline,
+    ]);
+
+    return response()->json([
+        'message' => 'Tâche mise à jour avec succès',
+        'task' => $task
+    ]);
+}
+
 
 }
