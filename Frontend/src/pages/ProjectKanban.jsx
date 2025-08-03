@@ -5,22 +5,33 @@ import axiosInstance from "../api/axios";
 import { DragDropContext, Droppable, Draggable } from "@hello-pangea/dnd";
 import Navbar from "../components/Navbar";
 import toast, { Toaster } from "react-hot-toast";
+import TaskDetails from "./TaskDetails";
 
 export default function ProjectKanban() {
   const { id } = useParams();
   const [project, setProject] = useState(null);
+  
   const [columns, setColumns] = useState({
-    "En attente": [],
-    "En cours": [],
-    "Terminée": [],
+    todo: [],
+    in_progress: [],
+    done: [],
   });
+  const [users, setUsers] = useState([]);
   const [showModal, setShowModal] = useState(false);
-  const [newTask, setNewTask] = useState({ titre: "", description: "", deadline: "", etat: "En attente" });
+  const [newTask, setNewTask] = useState({
+    titre: "",
+    description: "",
+    deadline: "",
+    etat: "todo",
+    assigned_to: "",
+  });
+  const [selectedTaskId, setSelectedTaskId] = useState(null);
 
   const navigate = useNavigate();
 
   useEffect(() => {
     loadProject();
+    loadUsers();
   }, []);
 
   const loadProject = async () => {
@@ -28,13 +39,23 @@ export default function ProjectKanban() {
       const res = await axiosInstance.get(`/projects/${id}`);
       setProject(res.data);
       const grouped = {
-        "En attente": res.data.tasks.filter((t) => t.etat === "todo"),
-        "En cours": res.data.tasks.filter((t) => t.etat === "in_progress"),
-        "Terminée": res.data.tasks.filter((t) => t.etat === "done"),
+        todo: res.data.tasks.filter((t) => t.etat === "todo"),
+        in_progress: res.data.tasks.filter((t) => t.etat === "in_progress"),
+        done: res.data.tasks.filter((t) => t.etat === "done"),
       };
       setColumns(grouped);
     } catch (error) {
       toast.error("Erreur lors du chargement du projet");
+    }
+  };
+
+  const loadUsers = async () => {
+    try {
+      const res = await axiosInstance.get("/users");
+      setUsers(res.data);
+    } catch (error) {
+      console.error("Erreur chargement users", error);
+      toast.error("Erreur chargement utilisateurs");
     }
   };
 
@@ -43,11 +64,21 @@ export default function ProjectKanban() {
       toast.error("Le titre est obligatoire");
       return;
     }
+    if (!newTask.etat) {
+      toast.error("Veuillez sélectionner un statut");
+      return;
+    }
     try {
       await axiosInstance.post(`/tasks`, { ...newTask, project_id: id });
       toast.success("Tâche créée avec succès !");
       setShowModal(false);
-      setNewTask({ titre: "", description: "", deadline: "", etat: "todo" });
+      setNewTask({
+        titre: "",
+        description: "",
+        deadline: "",
+        etat: "todo",
+        assigned_to: "",
+      });
       loadProject();
     } catch (error) {
       toast.error("Erreur lors de la création de la tâche");
@@ -125,7 +156,13 @@ export default function ProjectKanban() {
                     ref={provided.innerRef}
                     className="bg-gray-100 rounded-lg p-4 shadow min-h-[500px]"
                   >
-                    <h2 className="font-semibold mb-4">{status}</h2>
+                    <h2 className="font-semibold mb-4 capitalize">
+                      {status === "todo"
+                        ? "En attente"
+                        : status === "in_progress"
+                        ? "En cours"
+                        : "Terminée"}
+                    </h2>
                     {columns[status].map((task, index) => (
                       <Draggable
                         key={task.id}
@@ -137,18 +174,29 @@ export default function ProjectKanban() {
                             ref={provided.innerRef}
                             {...provided.draggableProps}
                             {...provided.dragHandleProps}
-                            onClick={() => navigate(`/tasks/${task.id}`)}
-                            className="bg-white p-3 rounded shadow mb-3 hover:shadow-lg cursor-pointer transition"
+                            onClick={() => setSelectedTaskId(task.id)}
+                            className="bg-white p-3 rounded shadow mb-3 hover:shadow-lg cursor-pointer transition flex justify-between items-center"
                           >
-                            <h3 className="font-bold">{task.titre}</h3>
-                            <p className="text-sm text-gray-500">
-                              {task.description.slice(0, 50)}...
-                            </p>
-                            <p className="text-xs text-gray-400">
-                              📅 {task.deadline
-                                ? new Date(task.deadline).toLocaleDateString()
-                                : "Pas de deadline"}
-                            </p>
+                            <div>
+                              <h3 className="font-bold">{task.titre}</h3>
+                              <p className="text-sm text-gray-500">
+                                {task.description.length > 50
+                                  ? task.description.slice(0, 50) + "..."
+                                  : task.description}
+                              </p>
+                              <p className="text-xs text-gray-400">
+                                📅{" "}
+                                {task.deadline
+                                  ? new Date(task.deadline).toLocaleDateString()
+                                  : "Pas de deadline"}
+                              </p>
+                            </div>
+
+                            <div className="ml-4 px-2 py-1 bg-indigo-600 text-white text-xs rounded-full whitespace-nowrap">
+                              {task.assigned_user
+                                ? task.assigned_user.name
+                                : "Non assignée"}
+                            </div>
                           </div>
                         )}
                       </Draggable>
@@ -161,6 +209,32 @@ export default function ProjectKanban() {
           </div>
         </DragDropContext>
 
+        {selectedTaskId && (
+          <TaskDetails
+            taskId={selectedTaskId}
+            onClose={() => setSelectedTaskId(null)}
+            onTaskUpdated={(updatedTask) => {
+              setColumns((prev) => {
+                const newColumns = { ...prev };
+
+                // Retirer la tâche de son ancienne colonne
+                Object.keys(newColumns).forEach((status) => {
+                  newColumns[status] = newColumns[status].filter(
+                    (t) => t.id !== updatedTask.id
+                  );
+                });
+
+                // Ajouter dans la bonne colonne
+                const key = updatedTask.etat || "todo"; // fallback
+                if (!newColumns[key]) newColumns[key] = [];
+                newColumns[key].push(updatedTask);
+
+                return newColumns;
+              });
+            }}
+          />
+        )}
+
         {/* Modal création tâche */}
         {showModal && (
           <div className="fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center">
@@ -170,30 +244,55 @@ export default function ProjectKanban() {
                 type="text"
                 placeholder="Titre"
                 value={newTask.titre}
-                onChange={(e) => setNewTask({ ...newTask, titre: e.target.value })}
+                onChange={(e) =>
+                  setNewTask({ ...newTask, titre: e.target.value })
+                }
                 className="w-full p-2 border rounded mb-3"
               />
               <textarea
                 placeholder="Description"
                 value={newTask.description}
-                onChange={(e) => setNewTask({ ...newTask, description: e.target.value })}
+                onChange={(e) =>
+                  setNewTask({ ...newTask, description: e.target.value })
+                }
                 className="w-full p-2 border rounded mb-3"
               />
               <input
                 type="date"
                 value={newTask.deadline}
-                onChange={(e) => setNewTask({ ...newTask, deadline: e.target.value })}
+                onChange={(e) =>
+                  setNewTask({ ...newTask, deadline: e.target.value })
+                }
                 className="w-full p-2 border rounded mb-3"
               />
-            <select
-            value={newTask.etat}
-            onChange={(e) => setNewTask({ ...newTask, etat: e.target.value })}
-            className="w-full p-2 border rounded mb-4"
-            >
-            <option value="todo">En attente</option>
-            <option value="in_progress">En cours</option>
-            <option value="done">Terminée</option>
-            </select>
+
+              <select
+                value={newTask.etat}
+                onChange={(e) =>
+                  setNewTask({ ...newTask, etat: e.target.value })
+                }
+                className="w-full p-2 border rounded mb-4"
+              >
+                <option value="">Sélectionner le statut</option>
+                <option value="todo">En attente</option>
+                <option value="in_progress">En cours</option>
+                <option value="done">Terminée</option>
+              </select>
+
+              <select
+                value={newTask.assigned_to}
+                onChange={(e) =>
+                  setNewTask({ ...newTask, assigned_to: e.target.value })
+                }
+                className="w-full p-2 border rounded mb-4"
+              >
+                <option value="">Assigner à...</option>
+                {users.map((user) => (
+                  <option key={user.id} value={user.id}>
+                    {user.name}
+                  </option>
+                ))}
+              </select>
 
               <div className="flex justify-end gap-2">
                 <button
