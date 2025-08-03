@@ -252,7 +252,7 @@ export default function ProjectKanban() {
                 onChange={(e) => setNewTask({ ...newTask, etat: e.target.value })}
                 className="w-full border border-gray-300 p-2 rounded focus:ring-2 focus:ring-emerald-400"
               >
-                <option value="">Sélectionner le statut</option>
+                <option value="" selected>-- selectionner une option --</option>
                 <option value="todo">En attente</option>
                 <option value="in_progress">En cours</option>
                 <option value="done">Terminée</option>
