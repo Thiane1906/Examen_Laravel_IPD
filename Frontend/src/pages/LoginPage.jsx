@@ -2,7 +2,7 @@ import { useState, useContext } from 'react';
 import { useNavigate } from 'react-router-dom';
 import axiosInstance from '../api/axios.js';
 import { csrf } from '../api/axios.js';
-
+import { Link } from 'react-router-dom';
 import { AuthContext } from '../context/AuthContext';
 
 export default function Login() {
@@ -24,10 +24,10 @@ export default function Login() {
 
       await csrf.get('/sanctum/csrf-cookie');
       console.log(form);
-      
+
       const res = await axiosInstance.post('/login', form);
       console.log(res);
-      
+
       const { token, user } = res.data;
 
       // C’est ici qu’on utilise le contexte d’auth
@@ -67,7 +67,17 @@ export default function Login() {
             Se connecter
           </button>
         </form>
+
+        {/* Ajout du lien vers la page d'inscription */}
+        <p className="text-sm mt-4 text-center">
+          Vous n'avez pas de compte ?{' '}
+          <Link to="/register" className="text-blue-600 hover:underline">
+            Inscrivez-vous
+          </Link>
+        </p>
+
       </div>
     </div>
   );
+
 }

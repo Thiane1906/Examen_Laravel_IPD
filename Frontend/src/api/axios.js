@@ -13,9 +13,12 @@ export const csrf = axios.create({
 axiosInstance.interceptors.request.use(
   (config) => {
     const token = localStorage.getItem('token');
-    if (token) {
+
+    // Vérifie si la requête ne cible pas /register
+    if (!config.url.includes('/register') && token) {
       config.headers.Authorization = `Bearer ${token}`;
     }
+
     return config;
   },
   (error) => Promise.reject(error)
